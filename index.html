@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Cuaca Kantor</title>
+    <!-- Memuat Bootstrap untuk tampilan yang rapi -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Memuat MQTT.js dari CDN -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        .card-val { font-size: 2.5rem; font-weight: bold; color: #0d6efd; }
+    </style>
+</head>
+<body class="py-5">
+
+    <div class="container">
+        <h1 class="text-center mb-4">Monitoring Cuaca Otomatis Kantor</h1>
+        
+        <div class="row text-center">
+            <!-- Suhu -->
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm p-3">
+                    <h5>Suhu Udara</h5>
+                    <div class="card-val"><span id="suhu">--</span> &deg;C</div>
+                </div>
+            </div>
+            <!-- Kelembapan -->
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm p-3">
+                    <h5>Kelembapan</h5>
+                    <div class="card-val"><span id="kelembapan">--</span> %</div>
+                </div>
+            </div>
+            <!-- Kecepatan Angin -->
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm p-3">
+                    <h5>Kecepatan Angin</h5>
+                    <div class="card-val"><span id="angin">--</span> m/s</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3 text-muted">
+            Status Koneksi: <span id="status-koneksi" class="badge bg-warning">Menghubungkan...</span>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI MQTT ---
+        // PENTING: Ganti dengan URL WebSocket MQTT Broker Anda yang bisa diakses via internet.
+        // Contoh menggunakan broker publik uji coba (HiveMQ):
+        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt'; 
+        // Catatan: Jika broker menggunakan WebSocket Secure (WSS), gunakan awalan 'wss://' dan port SSL-nya.
+        
+        const client = mqtt.connect(brokerUrl);
+        const badgeStatus = document.getElementById('status-koneksi');
+
+        client.on('connect', function () {
+            console.log('Terhubung ke MQTT Broker');
+            badgeStatus.innerText = 'Terhubung (Live)';
+            badgeStatus.className = 'badge bg-success';
+
+            // Subscribe ke topik alat cuaca Anda (sesuaikan topiknya)
+            client.subscribe('kantor/cuaca/#', function (err) {
+                if (err) console.error('Gagal subscribe', err);
+            });
+        });
+
+        client.on('error', function (err) {
+            console.error('Koneksi error:', err);
+            badgeStatus.innerText = 'Error Koneksi (Cek WSS)';
+            badgeStatus.className = 'badge bg-danger';
+        });
+
+        // Menerima data masuk dari alat cuaca
+        client.on('message', function (topic, payload) {
+            const pesan = payload.toString();
+            console.log(`Topik: ${topic} | Pesan: ${pesan}`);
+
+            // Sesuaikan nama topik dengan yang dikirim alat cuaca kantor
+            if (topic === 'kantor/cuaca/suhu') {
+                document.getElementById('suhu').innerText = pesan;
+            } else if (topic === 'kantor/cuaca/kelembapan') {
+                document.getElementById('kelembapan').innerText = pesan;
+            } else if (topic === 'kantor/cuaca/angin') {
+                document.getElementById('angin').innerText = pesan;
+            }
+        });
+    </script>
+</body>
+</html>
